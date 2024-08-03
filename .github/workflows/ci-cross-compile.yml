@@ -60,6 +60,13 @@ jobs:
     env:
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
       EMSDK: '/tmp/emsdk/upstream/emscripten'
+      # Setting to r26 because many packages on vcpkg fail (such as miniz)
+      # If the NDK version is no longer available, remove these values or
+      # Get the latest r26 from https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md
+      ANDROID_NDK: /usr/local/lib/android/sdk/ndk/26.3.11579264
+      ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/26.3.11579264
+      ANDROID_NDK_LATEST_HOME: /usr/local/lib/android/sdk/ndk/26.3.11579264
+      ANDROID_NDK_ROOT: /usr/local/lib/android/sdk/ndk/26.3.11579264
 
     steps:
       - uses: actions/checkout@v3
