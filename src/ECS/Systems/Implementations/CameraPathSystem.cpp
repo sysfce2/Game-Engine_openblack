@@ -131,8 +131,8 @@ void CameraPathSystem::Stop()
 	DeletePath(_startingEntity);
 	_startingEntity = entt::null;
 	_nextStepEntity = entt::null;
-	_duration = std::chrono::microseconds (0);
-	_timeElapsedDuringStep = std::chrono::microseconds (0);
+	_duration = std::chrono::microseconds(0);
+	_timeElapsedDuringStep = std::chrono::microseconds(0);
 	_paused = false;
 }
 
