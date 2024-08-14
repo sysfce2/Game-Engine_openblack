@@ -20,10 +20,10 @@ class CameraPathSystemInterface
 {
 public:
 	virtual void Start(entt::id_type id) = 0;
-	virtual void Stop(entt::entity start) = 0;
+	virtual void Stop() = 0;
 	virtual void Pause(bool flag) = 0;
 	virtual void Update(const std::chrono::microseconds& dt) = 0;
-	virtual bool IsPlaying() = 0;
+	virtual bool Active() = 0;
 	virtual bool IsPaused() = 0;
 };
 } // namespace openblack::ecs::systems

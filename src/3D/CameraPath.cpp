@@ -27,9 +27,7 @@ CameraPath::CameraPath(std::string debugName)
 
 void CameraPath::Load(const cam::CAMFile& file)
 {
-
 	auto filePoints = file.GetPoints();
-
 	for (auto& filePoint : filePoints)
 	{
 		auto& node = _points.emplace_back();
@@ -39,7 +37,7 @@ void CameraPath::Load(const cam::CAMFile& file)
 		node.rotation = glm::make_vec3(filePoint.heading.data());
 	}
 
-	_movementSpeed = file.GetMovementSpeed();
+	_duration = std::chrono::milliseconds(file.GetDuration());
 }
 
 bool CameraPath::LoadFromFile(const std::filesystem::path& path)

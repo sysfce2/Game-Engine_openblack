@@ -33,10 +33,8 @@ protected:
 
 private:
 	void DrawControls();
-	void DrawInstanceList();
 	void DrawCameraResourceList();
 	entt::id_type _selectedCameraPath;
-	entt::entity _selectedCameraPathInstance;
 	std::map<entt::id_type, std::tuple<bool, entt::entity>> _drawingCameraPaths;
 	std::map<entt::id_type, std::vector<entt::entity>> _cameraPathEntities;
 	bool _running = false;

@@ -13,6 +13,9 @@
 
 #include "ECS/Components/CameraPathNode.h"
 #include "ECS/Registry.h"
+#include "Game.h"
+#include "Camera/Camera.h"
+#include "3D/TempleInteriorInterface.h"
 #include "ECS/Systems/CameraPathSystemInterface.h"
 #include "Game.h"
 #include "Locator.h"
@@ -21,13 +24,15 @@
 using namespace openblack::debug::gui;
 
 Camera::Camera()
-    : Window("Camera", ImVec2(50.0f, 50.0f))
+    : Window("Camera", ImVec2(50.0f, 25.0f))
     , _selectedCameraPath(entt::hashed_string("cam"))
 {
 }
 
 void Camera::Draw([[maybe_unused]] openblack::Game& game)
 {
+	auto& cameraPathSystem = Locator::cameraPathSystem::value();
+	auto& registry = Locator::entitiesRegistry::value();
 	const float fontSize = ImGui::GetFontSize();
 	ImGui::BeginChild("cameraPaths", ImVec2(fontSize * 10.0f, 0));
 
@@ -38,50 +43,43 @@ void Camera::Draw([[maybe_unused]] openblack::Game& game)
 	ImGui::BeginChild("cameraPathControls", ImVec2(0, 0), ImGuiChildFlags_Border, flags);
 	if (ImGui::BeginMenuBar())
 	{
-		ImGui::TextUnformatted("Camera Paths");
+		ImGui::TextUnformatted("Controls");
 		ImGui::EndMenuBar();
 	}
-	if (ImGui::Button("Create Instance"))
+	if (ImGui::Button("Run"))
 	{
-		Locator::cameraPathSystem::value().Start(_selectedCameraPath);
+		if (Locator::temple::value().Active())
+		{
+			Game::Instance()->GetCamera().SetOrigin(Locator::temple::value().GetPosition());
+		}
+		cameraPathSystem.Start(_selectedCameraPath);
 	}
 	ImGui::SameLine();
-	auto& registry = Locator::entitiesRegistry::value();
-	if (ImGui::Button("Delete Instance") && registry.Valid(_selectedCameraPathInstance))
+	if (ImGui::Button("Stop"))
 	{
-		Locator::cameraPathSystem::value().Stop(_selectedCameraPathInstance);
+		cameraPathSystem.Stop();
+	}
+	ImGui::SameLine();
+	if (ImGui::Button(cameraPathSystem.IsPaused() ? "Resume" : "Pause"))
+	{
+		cameraPathSystem.Pause(!cameraPathSystem.IsPaused());
 	}
 
-	ImGui::BeginChild("cameraPathDetails", ImVec2(0, 0), ImGuiChildFlags_Border, flags);
-	{
-		DrawInstanceList();
-		ImGui::SameLine();
-		DrawControls();
-	}
-	ImGui::EndChild();
+	DrawControls();
 	ImGui::EndChild();
 }
 
 void Camera::DrawControls()
 {
-	auto& cameraPathSystem = Locator::cameraPathSystem::value();
 	auto const& cameraPaths = Locator::resources::value().GetCameraPaths();
 	const auto& cameraPath = cameraPaths.Handle(_selectedCameraPath);
 	if (cameraPath)
 	{
 		ImGui::BeginChild("cameraPathControls");
-		if (ImGui::Button(cameraPathSystem.IsPaused() ? "Resume" : "Pause"))
-		{
-			cameraPathSystem.Pause(!cameraPathSystem.IsPaused());
-		}
 		const auto& pointCount = cameraPath->GetPoints().size();
-		if (ImGui::BeginMenuBar())
-		{
-			ImGui::TextUnformatted("Selected Camera Path Information");
-			ImGui::EndMenuBar();
-		}
 		ImGui::Text("Points: %zu", pointCount);
-		ImGui::Text("Movement Speed: %u", cameraPath->GetMovementSpeed());
+		auto duration = std::chrono::duration<unsigned int, std::milli>(cameraPath->GetDuration()).count();
+		ImGui::Text("Duration (milliseconds): %u", duration);
 		ImGui::EndChild();
 	}
 	else
@@ -112,37 +110,6 @@ void Camera::DrawCameraResourceList()
 			{
 				_selectedCameraPath = id;
 			}
-		});
-	}
-	ImGui::EndChild();
-}
-
-void Camera::DrawInstanceList()
-{
-	auto meshSize = ImGui::GetItemRectSize();
-	auto childSize = ImVec2(meshSize.x / 4, meshSize.y);
-	const ImGuiWindowFlags flags = ImGuiWindowFlags_MenuBar;
-	const bool isChildVisible = ImGui::BeginChild("cameraPathInstancesList", childSize, ImGuiChildFlags_Border, flags);
-	if (ImGui::BeginMenuBar())
-	{
-		ImGui::TextUnformatted("Instances");
-		ImGui::EndMenuBar();
-	}
-	if (isChildVisible)
-	{
-		auto& registry = Locator::entitiesRegistry::value();
-		uint32_t instances = 0;
-		registry.Each<const ecs::components::CameraPathStart>([this, &instances](entt::entity entity, auto component) {
-			if (component.from != _selectedCameraPath)
-			{
-				return;
-			}
-			const auto& name = fmt::format("{}", instances);
-			if (ImGui::Selectable(name.c_str(), entity == _selectedCameraPathInstance))
-			{
-				_selectedCameraPathInstance = entity;
-			}
-			instances++;
 		});
 	}
 	ImGui::EndChild();

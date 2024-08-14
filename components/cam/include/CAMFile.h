@@ -24,7 +24,7 @@ namespace openblack::cam
 struct CAMHeader
 {
 	uint32_t size;
-	uint32_t movementSpeed;
+	uint32_t durationMilliseconds;
 	uint32_t pointCount;
 };
 static_assert(sizeof(CAMHeader) == 0xc);
@@ -72,10 +72,10 @@ public:
 	[[nodiscard]] std::string GetFilename() const noexcept { return _filename.string(); }
 	[[nodiscard]] const CAMHeader& GetHeader() const noexcept { return _header; }
 
-	[[nodiscard]] uint32_t GetMovementSpeed() const noexcept { return _header.movementSpeed; }
+	[[nodiscard]] uint32_t GetDuration() const noexcept { return _header.durationMilliseconds; }
 	[[nodiscard]] const std::vector<CAMPoint>& GetPoints() const noexcept { return _points; };
 
-	void SetMovementSpeed(uint32_t speed) noexcept { _header.movementSpeed = speed; }
+	void SetMovementSpeed(uint32_t speed) noexcept { _header.durationMilliseconds = speed; }
 	void SetPoints(std::vector<openblack::cam::CAMPoint>&& points) noexcept { _points = std::move(points); }
 };
 

@@ -81,7 +81,10 @@ void DeletePath(entt::entity start)
 	auto& registry = Locator::entitiesRegistry::value();
 	auto& startNode = registry.Get<ecs::components::CameraPathNode>(start);
 	auto current = startNode.next;
-	registry.Destroy(startNode.lookAt);
+	if (registry.Valid(startNode.lookAt))
+	{
+		registry.Destroy(startNode.lookAt);
+	}
 
 	while (current != entt::null)
 	{
@@ -89,7 +92,10 @@ void DeletePath(entt::entity start)
 		auto next = node.next;
 		auto lookAt = node.lookAt;
 		registry.Destroy(current);
-		registry.Destroy(lookAt);
+		if (registry.Valid(lookAt))
+		{
+			registry.Destroy(lookAt);
+		}
 		current = next;
 	}
 
@@ -99,61 +105,97 @@ void DeletePath(entt::entity start)
 void CameraPathSystem::Start(entt::id_type id)
 {
 	const auto& cameraPath = Locator::resources::value().GetCameraPaths().Handle(id);
-	_start = CreatePath(id, cameraPath);
-	_current = _start;
+	if (!cameraPath)
+	{
+		return;
+	}
+	_startingEntity = CreatePath(id, cameraPath);
+	_nextStepEntity = _startingEntity;
+	auto& registry = Locator::entitiesRegistry::value();
+
+	const auto& nextStepNode = registry.Get<CameraPathNode>(_nextStepEntity);
+	auto& camera = Game::Instance()->GetCamera();
+	_currentStepCameraPosition = camera.GetOrigin();
+	_currentStepLookAtPosition = camera.GetFocus();
+	if (registry.Valid(nextStepNode.lookAt))
+	{
+		_currentStepLookAtPosition = registry.Get<Transform>(nextStepNode.lookAt).position;
+	}
+	_timeElapsedDuringStep = std::chrono::microseconds(0);
+	_duration = cameraPath->GetDuration() / cameraPath->GetPoints().size();
 	_paused = false;
 }
 
-void CameraPathSystem::Stop([[maybe_unused]] entt::entity start)
+void CameraPathSystem::Stop()
 {
-	//	DeletePath(start);
-	_start = entt::null;
-	_current = entt::null;
+	DeletePath(_startingEntity);
+	_startingEntity = entt::null;
+	_nextStepEntity = entt::null;
+	_duration = std::chrono::microseconds (0);
+	_timeElapsedDuringStep = std::chrono::microseconds (0);
 	_paused = false;
+}
+
+float easeCubic(float t)
+{
+	if (t < 0.5f)
+	{
+		return 4 * t * t * t;
+	}
+
+	return (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
 }
 
 void CameraPathSystem::Update(const std::chrono::microseconds& dt)
 {
 	auto& registry = Locator::entitiesRegistry::value();
-	auto& camera = Game::Instance()->GetCamera();
-	auto validStart = _start != entt::null && registry.Valid(_start);
-	[[maybe_unused]] auto validCurrent = _current != entt::null && registry.Valid(_current);
-	assert(validStart == validCurrent);
-
+	auto validStart = _startingEntity != entt::null && registry.Valid(_startingEntity);
 	if (!validStart)
 	{
 		return;
 	}
 
-	const auto& targetPosition = registry.Get<Transform>(_current).position;
-	const auto& node = registry.Get<CameraPathNode>(_current);
-	const auto& position = camera.GetOrigin();
-	if (position == targetPosition && !_paused)
-	{
+	auto& camera = Game::Instance()->GetCamera();
+	const auto& nextStepNode = registry.Get<CameraPathNode>(_nextStepEntity);
+	const auto& nextStepCameraPosition = registry.Get<Transform>(_nextStepEntity).position;
+	_timeElapsedDuringStep += dt;
+	float blendFactor = std::chrono::duration<float, std::micro>(_timeElapsedDuringStep / _duration).count();
+	blendFactor = glm::min(blendFactor, 1.f); // Avoid overstepping
+	float easedBlend = easeCubic(blendFactor);
+	camera.SetOrigin(glm::lerp(_currentStepCameraPosition, nextStepCameraPosition, easedBlend));
 
-		_current = node.next;
-		if (_current == entt::null)
-		{
-			if (registry.Valid(_start))
-			{
-				Stop(_start);
-			}
-		}
+	// Control where we look
+	if (registry.Valid(nextStepNode.lookAt))
+	{
+		const auto& nextStepLookAtPosition = registry.Get<Transform>(nextStepNode.lookAt).position;
+		camera.SetFocus(glm::lerp(_currentStepLookAtPosition, nextStepLookAtPosition, easedBlend));
 	}
 
-	// TODO: This section needs to be better defined and understood
-	static constexpr auto k_MaxSpeed = 0.005f;
-	const auto dtc = dt.count() * 10;
-	_progress = glm::clamp(_progress + k_MaxSpeed * dtc, 0.0f, 1.0f);
-	camera.SetOrigin(glm::mix(position, targetPosition, _progress));
-	if (registry.Valid(node.lookAt))
+	// If a next step exists, prepare for it, otherwise we stop completely
+	if (blendFactor >= 1.f)
 	{
-		camera.SetFocus(registry.Get<Transform>(node.lookAt).position);
+		// Update to a new starting position to transition from, for the camera position
+		_currentStepCameraPosition = nextStepCameraPosition;
+		// Update to a new starting position to transition from, for the camera angle
+		if (registry.Valid(nextStepNode.lookAt))
+		{
+			const auto& nextStepLookAtPosition = registry.Get<Transform>(nextStepNode.lookAt).position;
+			_currentStepLookAtPosition = nextStepLookAtPosition;
+		}
+
+		_nextStepEntity = nextStepNode.next;
+		if (_nextStepEntity == entt::null)
+		{
+			Stop();
+			return;
+		}
+
+		_timeElapsedDuringStep = std::chrono::microseconds(0);
 	}
 }
 
-bool CameraPathSystem::IsPlaying()
+bool CameraPathSystem::Active()
 {
 	auto& registry = Locator::entitiesRegistry::value();
-	return registry.Valid(_start);
+	return registry.Valid(_startingEntity);
 }

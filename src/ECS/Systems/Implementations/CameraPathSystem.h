@@ -28,19 +28,22 @@ class CameraPathSystem final: public CameraPathSystemInterface
 {
 public:
 	CameraPathSystem()
-	    : _start(entt::null)
-	    , _current(entt::null) {};
+	    : _startingEntity(entt::null)
+	    , _nextStepEntity(entt::null) {};
 	void Start(entt::id_type id) override;
-	void Stop(entt::entity start) override;
+	void Stop() override;
 	void Pause(bool flag) override { _paused = flag; };
 	void Update(const std::chrono::microseconds& dt) override;
-	bool IsPlaying() override;
+	bool Active() override;
 	bool IsPaused() override { return _paused; };
 
 private:
-	entt::entity _start;
-	entt::entity _current;
+	entt::entity _startingEntity;
+	entt::entity _nextStepEntity;
+	glm::vec3 _currentStepCameraPosition;
+	glm::vec3 _currentStepLookAtPosition;
+	std::chrono::microseconds _timeElapsedDuringStep;
+	std::chrono::microseconds _duration;
 	bool _paused = false;
-	float _progress;
 };
 } // namespace openblack::ecs::systems

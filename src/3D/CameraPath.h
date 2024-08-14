@@ -44,7 +44,7 @@ public:
 	bool LoadFromBuffer(const std::vector<uint8_t>& data);
 
 	[[nodiscard]] const std::vector<CameraPoint>& GetPoints() const { return _points; }
-	[[nodiscard]] uint32_t GetMovementSpeed() const { return _movementSpeed; };
+	[[nodiscard]] std::chrono::milliseconds GetDuration() const { return _duration; };
 	/// Creates ECS entities for each camera path node. Assigns a camera-vertex component to each entity
 	void CreatePathEntities(glm::vec3 position);
 	/// Creates an ECS entity for the first camera path node
@@ -55,7 +55,7 @@ public:
 
 private:
 	std::string _debugName;
-	uint32_t _movementSpeed {0};
+	std::chrono::milliseconds _duration;
 	std::vector<CameraPoint> _points;
 	entt::entity _start;
 };

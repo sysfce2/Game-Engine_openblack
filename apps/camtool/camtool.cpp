@@ -47,7 +47,7 @@ int PrintHeader(const openblack::cam::CAMFile& cam)
 
 	std::printf("file: %s\n", cam.GetFilename().c_str());
 	std::printf("file size: %u bytes\n", header.size);
-	std::printf("movement speed: %u\n", header.movementSpeed);
+	std::printf("movement speed: %u\n", header.durationMilliseconds);
 	std::printf("point count: %u\n", header.pointCount);
 	std::printf("\n");
 
